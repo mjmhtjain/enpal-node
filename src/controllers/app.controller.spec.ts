@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CalendarQueryRequestDto } from '../dto/calendarQueryRequest.dto';
+import { CalendarQueryRequestDto, Language, Rating } from '../dto/calendarQueryRequest.dto';
 import { AppService } from '../services/app.service';
 import { AppController } from './app.controller';
 
@@ -106,6 +106,35 @@ describe('AppController', () => {
       }).toThrow(mockError);
 
       expect(appService.getFreeSlots).toHaveBeenCalledWith(requestDto);
+    });
+
+    it('should handle duplicate products in the request', () => {
+      const requestWithDuplicates: CalendarQueryRequestDto = {
+        date: '2023-10-15',
+        products: ['SolarPanels', 'SolarPanels', 'Heatpumps', 'Heatpumps'],
+        language: 'English',
+        rating: 'Gold' as any,
+      };
+
+      // The expected deduplicated array that should be passed to the service
+      const expectedDeduplicated: CalendarQueryRequestDto = {
+        date: '2023-10-15',
+        products: ['SolarPanels', 'Heatpumps'],
+        language: Language.English,
+        rating: Rating.Gold,
+      };
+
+      const serviceResponse = { request: expectedDeduplicated };
+      jest.spyOn(appService, 'getFreeSlots').mockReturnValue(serviceResponse);
+
+      const result = appController.getFreeSlots(requestWithDuplicates);
+
+      expect(result).toBe(serviceResponse);
+      expect(appService.getFreeSlots).toHaveBeenCalledWith(
+        expect.objectContaining({
+          products: expect.arrayContaining(['SolarPanels', 'Heatpumps'])
+        })
+      );
     });
   });
 });
