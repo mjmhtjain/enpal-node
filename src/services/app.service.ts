@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CalendarQueryRequestDto } from "../dto/calendarQueryRequest.dto";
+import { CalendarQueryResponseDTO } from "../dto/calendarQueryResponse.dto";
 
 @Injectable()
 export class AppService {
@@ -12,6 +13,10 @@ export class AppService {
   }
 
   getFreeSlots(body: CalendarQueryRequestDto) {
-    return { request: body };
+    let as = new CalendarQueryResponseDTO()
+    as.availableCount = 1
+    as.startDate = new Date().toISOString()
+
+    return as;
   }
 }
