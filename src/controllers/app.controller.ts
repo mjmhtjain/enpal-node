@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, UsePipes, ValidationPipe } from '@nestjs/common';
 import { CalendarQueryRequestDto } from '../dto/calendarQueryRequest.dto';
 import { AppService } from '../services/app.service';
 
@@ -14,7 +14,19 @@ export class AppController {
 
   @Post("/calendar/query")
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  getFreeSlots(@Body() body: CalendarQueryRequestDto) {
-    return this.appService.getFreeSlots(body);
+  @HttpCode(HttpStatus.OK)
+  async getFreeSlots(@Body() body: CalendarQueryRequestDto) {
+    try {
+      const data = await this.appService.getFreeSlots(body);
+      return data;
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: 'An error occurred while fetching slots',
+          error: error.message
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 }

@@ -1,5 +1,6 @@
+import { HttpException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { CalendarQueryRequestDto, Language, Rating } from '../dto/calendarQueryRequest.dto';
+import { CalendarQueryRequestDto } from '../dto/calendarQueryRequest.dto';
 import { AppService } from '../services/app.service';
 import { AppController } from './app.controller';
 
@@ -36,7 +37,7 @@ describe('AppController', () => {
   });
 
   describe('getFreeSlots', () => {
-    it('should pass the body to appService and return the result', () => {
+    it('should pass the body to appService and return the result', async () => {
       const requestDto: CalendarQueryRequestDto = {
         date: '2023-10-15',
         products: ['SolarPanels'],
@@ -44,17 +45,16 @@ describe('AppController', () => {
         rating: 'Gold' as any,
       };
 
-      const expectedResult = { request: requestDto };
+      const expectedResult = [];
+      jest.spyOn(appService, 'getFreeSlots').mockResolvedValue(expectedResult);
 
-      jest.spyOn(appService, 'getFreeSlots').mockReturnValue(expectedResult);
-
-      const result = appController.getFreeSlots(requestDto);
+      const result = await appController.getFreeSlots(requestDto);
 
       expect(result).toBe(expectedResult);
       expect(appService.getFreeSlots).toHaveBeenCalledWith(requestDto);
     });
 
-    it('should handle multiple products in the request', () => {
+    it('should handle multiple products in the request', async () => {
       const requestDto: CalendarQueryRequestDto = {
         date: '2023-10-15',
         products: ['SolarPanels', 'Heatpumps'],
@@ -62,17 +62,16 @@ describe('AppController', () => {
         rating: 'Silver' as any,
       };
 
-      const expectedResult = { request: requestDto };
+      const expectedResult = [];
+      jest.spyOn(appService, 'getFreeSlots').mockResolvedValue(expectedResult);
 
-      jest.spyOn(appService, 'getFreeSlots').mockReturnValue(expectedResult);
-
-      const result = appController.getFreeSlots(requestDto);
+      const result = await appController.getFreeSlots(requestDto);
 
       expect(result).toBe(expectedResult);
       expect(appService.getFreeSlots).toHaveBeenCalledWith(requestDto);
     });
 
-    it('should handle all rating types correctly', () => {
+    it('should handle all rating types correctly', async () => {
       // Test with Bronze rating
       const bronzeRequestDto: CalendarQueryRequestDto = {
         date: '2023-10-15',
@@ -81,14 +80,15 @@ describe('AppController', () => {
         rating: 'Bronze' as any,
       };
 
-      const bronzeResult = { request: bronzeRequestDto };
-      jest.spyOn(appService, 'getFreeSlots').mockReturnValue(bronzeResult);
+      const bronzeResult = [];
+      jest.spyOn(appService, 'getFreeSlots').mockResolvedValue(bronzeResult);
 
-      expect(appController.getFreeSlots(bronzeRequestDto)).toBe(bronzeResult);
+      const result = await appController.getFreeSlots(bronzeRequestDto);
+      expect(result).toBe(bronzeResult);
       expect(appService.getFreeSlots).toHaveBeenCalledWith(bronzeRequestDto);
     });
 
-    it('should propagate errors from the service', () => {
+    it('should throw HttpException when service throws an error', async () => {
       const requestDto: CalendarQueryRequestDto = {
         date: '2023-10-15',
         products: ['SolarPanels'],
@@ -97,18 +97,13 @@ describe('AppController', () => {
       };
 
       const mockError = new Error('Service error');
-      jest.spyOn(appService, 'getFreeSlots').mockImplementation(() => {
-        throw mockError;
-      });
+      jest.spyOn(appService, 'getFreeSlots').mockRejectedValue(mockError);
 
-      expect(() => {
-        appController.getFreeSlots(requestDto);
-      }).toThrow(mockError);
-
+      await expect(appController.getFreeSlots(requestDto)).rejects.toThrow(HttpException);
       expect(appService.getFreeSlots).toHaveBeenCalledWith(requestDto);
     });
 
-    it('should handle duplicate products in the request', () => {
+    it('should handle duplicate products in the request', async () => {
       const requestWithDuplicates: CalendarQueryRequestDto = {
         date: '2023-10-15',
         products: ['SolarPanels', 'SolarPanels', 'Heatpumps', 'Heatpumps'],
@@ -116,25 +111,13 @@ describe('AppController', () => {
         rating: 'Gold' as any,
       };
 
-      // The expected deduplicated array that should be passed to the service
-      const expectedDeduplicated: CalendarQueryRequestDto = {
-        date: '2023-10-15',
-        products: ['SolarPanels', 'Heatpumps'],
-        language: Language.English,
-        rating: Rating.Gold,
-      };
+      const serviceResponse = [];
+      jest.spyOn(appService, 'getFreeSlots').mockResolvedValue(serviceResponse);
 
-      const serviceResponse = { request: expectedDeduplicated };
-      jest.spyOn(appService, 'getFreeSlots').mockReturnValue(serviceResponse);
-
-      const result = appController.getFreeSlots(requestWithDuplicates);
+      const result = await appController.getFreeSlots(requestWithDuplicates);
 
       expect(result).toBe(serviceResponse);
-      expect(appService.getFreeSlots).toHaveBeenCalledWith(
-        expect.objectContaining({
-          products: expect.arrayContaining(['SolarPanels', 'Heatpumps'])
-        })
-      );
+      expect(appService.getFreeSlots).toHaveBeenCalledWith(requestWithDuplicates);
     });
   });
 });

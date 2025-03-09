@@ -11,10 +11,9 @@ export class DatabaseService {
     ) { }
 
     async findSlotsByDate(date: string): Promise<Slots[]> {
-        return this.calendarSlotRepository.find({
-            where: {
-                start_date: new Date(date)
-            },
-        });
+        return this.calendarSlotRepository
+            .createQueryBuilder('slots')
+            .where('DATE(slots.start_date) = :date', { date })
+            .getMany();
     }
 } 
