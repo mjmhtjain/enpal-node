@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CalendarQueryRequestDto } from "../dto/calendarQueryRequest.dto";
 import { CalendarQueryResponseDTO } from "../dto/calendarQueryResponse.dto";
+import { Slots } from '../entities/slots.entity';
 import { DatabaseService } from './database.service';
 
 @Injectable()
@@ -16,13 +17,12 @@ export class AppService {
   }
 
   async getFreeSlots(body: CalendarQueryRequestDto) {
-    const response: CalendarQueryResponseDTO[] = [];
     // Get available slots from the database
     const availableSlots = await this.databaseService.findSlotsByDate(body.date);
 
-    // group available slots by sales manager
-    const groupedSlots = availableSlots.reduce((acc, slot) => {
-      const salesManagerId = slot.sales_manager_id;
+    // Group available slots by sales manager ID
+    const groupedSlots: Record<string, Slots[]> = availableSlots.reduce((acc: Record<string, Slots[]>, slot: Slots) => {
+      const salesManagerId = slot.sales_manager_id.toString();
       if (!acc[salesManagerId]) {
         acc[salesManagerId] = [];
       }
@@ -30,14 +30,16 @@ export class AppService {
       return acc;
     }, {});
 
+    // Create response array
+    const response: CalendarQueryResponseDTO[] = [];
 
-    // Create response
-    for (const slot of availableSlots) {
-      const object = new CalendarQueryResponseDTO();
-      object.availableCount = availableSlots.length;
-      object.startDate = body.date;
+    // Process each sales manager group
+    for (const [salesManagerId, slots] of Object.entries(groupedSlots)) {
+      const responseObj = new CalendarQueryResponseDTO();
+      responseObj.availableCount = slots.length;
+      responseObj.startDate = body.date;
 
-      response.push(object);
+      response.push(responseObj);
     }
 
     return response;
